@@ -1,0 +1,218 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+}
+
+.filterBar {
+  display: flex;
+  gap: $spacing-sm;
+  padding: $spacing-md $page-padding;
+  overflow-x: auto;
+  @include scroll-x-container;
+}
+
+.filterItem {
+  @include scroll-x-item(auto);
+  padding: $spacing-sm $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    border-color: $color-primary;
+
+    .filterText {
+      color: $color-text-white;
+    }
+  }
+}
+
+.filterText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.list {
+  padding: 0 $page-padding $spacing-xl;
+}
+
+.productCard {
+  background: $color-bg-card;
+  border-radius: $radius-lg;
+  padding: $spacing-lg;
+  box-shadow: $shadow-card;
+  margin-bottom: $spacing-md;
+  transition: all $transition-base;
+
+  &:active {
+    opacity: 0.9;
+    transform: scale(0.98);
+  }
+}
+
+.cardHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: $spacing-md;
+}
+
+.productInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.productName {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-xs;
+  @include text-ellipsis;
+}
+
+.productSpec {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+}
+
+.gradeBadge {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+  margin-left: $spacing-sm;
+  flex-shrink: 0;
+}
+
+.gradePremium {
+  background: linear-gradient(135deg, #DAA520 0%, #FFD700 100%);
+
+  .gradeText {
+    color: #fff;
+  }
+}
+
+.gradeFine {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+
+  .gradeText {
+    color: #fff;
+  }
+}
+
+.gradeStandard {
+  background: $color-bg-tag;
+
+  .gradeText {
+    color: $color-primary;
+  }
+}
+
+.gradeNormal {
+  background: $color-bg-tag;
+
+  .gradeText {
+    color: $color-text-tertiary;
+  }
+}
+
+.gradeText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+}
+
+.productGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.productGridItem {
+  text-align: center;
+  background: $color-bg-tag;
+  border-radius: $radius-sm;
+  padding: $spacing-sm;
+}
+
+.gridLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+  margin-bottom: $spacing-xs;
+}
+
+.gridValue {
+  font-size: $font-size-md;
+  font-weight: $font-weight-bold;
+  color: $color-text-primary;
+}
+
+.priceValue {
+  color: $color-primary;
+}
+
+.statusRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: $spacing-md;
+  border-top: 1rpx solid $color-divider;
+}
+
+.statusBadge {
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-sm;
+}
+
+.statusInstock {
+  background: rgba(46, 139, 87, 0.1);
+
+  .statusText {
+    color: $color-stock-ok;
+  }
+}
+
+.statusSold {
+  background: rgba(139, 69, 19, 0.1);
+
+  .statusText {
+    color: $color-primary;
+  }
+}
+
+.statusReserved {
+  background: rgba(218, 165, 32, 0.1);
+
+  .statusText {
+    color: $color-stock-warning;
+  }
+}
+
+.statusText {
+  font-size: $font-size-xs;
+  font-weight: $font-weight-medium;
+}
+
+.productDate {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.remark {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  @include text-ellipsis;
+  padding-top: $spacing-sm;
+}
+
+.statsRow {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md $page-padding;
+}

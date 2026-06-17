@@ -1,0 +1,157 @@
+@use '@/styles/variables.scss' as *;
+
+.container {
+  min-height: 100vh;
+}
+
+.tabs {
+  display: flex;
+  padding: $spacing-md $page-padding 0;
+  gap: $spacing-sm;
+  overflow-x: auto;
+  @include scroll-x-container;
+}
+
+.tabItem {
+  @include scroll-x-item(auto);
+  padding: $spacing-sm $spacing-lg;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+
+  &.active {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    border-color: $color-primary;
+
+    .tabText {
+      color: $color-text-white;
+    }
+  }
+}
+
+.tabText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+  white-space: nowrap;
+}
+
+.specSection {
+  padding: $spacing-md $page-padding;
+}
+
+.specTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+}
+
+.specGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: $spacing-md;
+}
+
+.specCard {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+  transition: all $transition-base;
+
+  &:active {
+    transform: scale(0.96);
+  }
+}
+
+.specName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-sm;
+}
+
+.specInfo {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  display: block;
+  line-height: 1.8;
+}
+
+.specValue {
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.sectionTitle {
+  font-size: $font-size-lg;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  padding: $spacing-md $page-padding;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.sectionCount {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  background: $color-bg-tag;
+  padding: $spacing-xs $spacing-sm;
+  border-radius: $radius-round;
+}
+
+.timeline {
+  padding: 0 $page-padding $spacing-xl;
+}
+
+.actionRow {
+  display: flex;
+  gap: $spacing-md;
+  padding: 0 $page-padding $spacing-md;
+}
+
+.actionBtn {
+  flex: 1;
+  @include button-reset;
+  height: $button-height-md;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  border: 2rpx solid $color-border;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all $transition-base;
+
+  &.primary {
+    background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+    border-color: transparent;
+
+    .actionBtnText {
+      color: $color-text-white;
+    }
+  }
+
+  &:active {
+    transform: scale(0.98);
+  }
+}
+
+.actionBtnText {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  font-weight: $font-weight-medium;
+}
+
+.statsRow {
+  display: flex;
+  gap: $spacing-md;
+  padding: $spacing-md $page-padding;
+}
+
+.emptyWrap {
+  padding: 0 $page-padding;
+}

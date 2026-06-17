@@ -1,0 +1,120 @@
+@use '@/styles/variables.scss' as *;
+
+.step {
+  display: flex;
+  padding-bottom: $spacing-lg;
+
+  &:active {
+    opacity: 0.8;
+  }
+}
+
+.last {
+  padding-bottom: 0;
+
+  .line {
+    display: none;
+  }
+}
+
+.timeline {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-right: $spacing-md;
+}
+
+.dot {
+  width: 72rpx;
+  height: 72rpx;
+  border-radius: $radius-round;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.15);
+}
+
+.dotIcon {
+  font-size: 32rpx;
+}
+
+.line {
+  width: 4rpx;
+  flex: 1;
+  background: $color-border;
+  margin-top: $spacing-sm;
+}
+
+.content {
+  flex: 1;
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  box-shadow: $shadow-card;
+  min-width: 0;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-xs;
+}
+
+.typeName {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+}
+
+.date {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.name {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  display: block;
+  margin-bottom: $spacing-xs;
+  @include text-ellipsis;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-xs;
+}
+
+.metaItem {
+  font-size: $font-size-xs;
+  color: $color-text-secondary;
+  background: $color-bg-tag;
+  padding: 4rpx $spacing-sm;
+  border-radius: $radius-xs;
+}
+
+.qualityRow {
+  display: flex;
+  align-items: center;
+  margin-bottom: $spacing-xs;
+}
+
+.qualityLabel {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+}
+
+.qualityValue {
+  font-size: $font-size-xs;
+  color: $color-success;
+  font-weight: $font-weight-medium;
+}
+
+.remark {
+  font-size: $font-size-xs;
+  color: $color-text-tertiary;
+  @include text-ellipsis-multi(2);
+}

@@ -1,0 +1,108 @@
+import { MixingRecord } from '../types';
+
+export const mixings: MixingRecord[] = [
+  {
+    id: 'mix001',
+    name: '大楷羊狼兼毫配方',
+    materials: [
+      { materialId: 'm001', materialName: '湖羊优质纯白毫', ratio: 60 },
+      { materialId: 'm002', materialName: '东北黄鼠狼尾毫', ratio: 40 },
+    ],
+    totalWeight: 100,
+    purpose: '制作大楷兼毫笔',
+    operator: '李笔匠',
+    date: '2026-03-25',
+    remark: '羊毫6狼毫4，刚柔并济',
+  },
+  {
+    id: 'mix002',
+    name: '中楷纯羊毫配方',
+    materials: [
+      { materialId: 'm001', materialName: '湖羊优质纯白毫', ratio: 80 },
+      { materialId: 'm006', materialName: '羊毛尖锋', ratio: 20 },
+    ],
+    totalWeight: 80,
+    purpose: '制作中楷纯羊毫笔',
+    operator: '李笔匠',
+    date: '2026-03-26',
+    remark: '纯羊毫，柔软蓄墨好',
+  },
+  {
+    id: 'mix003',
+    name: '小楷纯狼毫配方',
+    materials: [
+      { materialId: 'm002', materialName: '东北黄鼠狼尾毫', ratio: 100 },
+    ],
+    totalWeight: 50,
+    purpose: '制作小楷纯狼毫笔',
+    operator: '张笔匠',
+    date: '2026-03-27',
+    remark: '精选尾毫，笔锋锐利',
+  },
+  {
+    id: 'mix004',
+    name: '行书兼毫配方',
+    materials: [
+      { materialId: 'm001', materialName: '湖羊优质纯白毫', ratio: 50 },
+      { materialId: 'm002', materialName: '东北黄鼠狼尾毫', ratio: 30 },
+      { materialId: 'm003', materialName: '野兔脊毛', ratio: 20 },
+    ],
+    totalWeight: 120,
+    purpose: '制作行书专用笔',
+    operator: '李笔匠',
+    date: '2026-03-28',
+    remark: '三合一配方，弹性适中',
+  },
+  {
+    id: 'mix005',
+    name: '山水画硬毫配方',
+    materials: [
+      { materialId: 'm007', materialName: '獾猪鬃毛', ratio: 40 },
+      { materialId: 'm002', materialName: '东北黄鼠狼尾毫', ratio: 30 },
+      { materialId: 'm003', materialName: '野兔脊毛', ratio: 30 },
+    ],
+    totalWeight: 90,
+    purpose: '制作山水画硬毫笔',
+    operator: '张笔匠',
+    date: '2026-03-29',
+    remark: '硬毫配方，适合皴擦技法',
+  },
+  {
+    id: 'mix006',
+    name: '学生练习笔配方',
+    materials: [
+      { materialId: 'm004', materialName: '湖羊一般白毫', ratio: 60 },
+      { materialId: 'm005', materialName: '黄鼠狼身毫', ratio: 40 },
+    ],
+    totalWeight: 200,
+    purpose: '制作学生练习用笔',
+    operator: '王学徒',
+    date: '2026-03-30',
+    remark: '经济实用型配方',
+  },
+  {
+    id: 'mix007',
+    name: '极品石獾配方',
+    materials: [
+      { materialId: 'm008', materialName: '石獾毫', ratio: 100 },
+    ],
+    totalWeight: 30,
+    purpose: '制作极品石獾笔',
+    operator: '李笔匠',
+    date: '2026-04-01',
+    remark: '纯石獾毫，高档定制专用',
+  },
+  {
+    id: 'mix008',
+    name: '大抓笔配方',
+    materials: [
+      { materialId: 'm010', materialName: '马鬃毛', ratio: 70 },
+      { materialId: 'm004', materialName: '湖羊一般白毫', ratio: 30 },
+    ],
+    totalWeight: 500,
+    purpose: '制作大号抓笔',
+    operator: '张笔匠',
+    date: '2026-04-02',
+    remark: '大型毛笔，用于写大字',
+  },
+];
