@@ -200,6 +200,22 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   };
 
   const updateOrderStatus = (id: string, status: Order['status']) => {
+    const order = orders.find(o => o.id === id);
+    if (!order) return { success: false, message: '订单不存在' };
+
+    if (status === 'processing' && order.status !== 'pending') {
+      return { success: false, message: '订单已被处理，无法重复开始制作' };
+    }
+    if (status === 'completed' && (order.status === 'completed' || order.status === 'paid' || order.status === 'cancelled')) {
+      return { success: false, message: '订单已完成或已取消' };
+    }
+    if (status === 'paid' && order.status === 'paid') {
+      return { success: false, message: '订单已确认收款，请勿重复操作' };
+    }
+    if (status === 'paid' && order.status !== 'completed') {
+      return { success: false, message: '请先完成订单再确认收款' };
+    }
+
     const statusMap: Record<Order['status'], string> = {
       pending: '待处理',
       processing: '制作中',
@@ -224,26 +240,62 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const completeOrderAndCreateSale = (orderId: string) => {
     const order = orders.find(o => o.id === orderId);
     if (!order) return { success: false, message: '订单不存在' };
+
+    if (order.status === 'cancelled') return { success: false, message: '订单已取消' };
+
     if (order.status === 'completed' || order.status === 'paid') {
-      for (const item of order.products) {
-        const stockResult = updateProductStock(item.productId, -item.quantity);
-        if (!stockResult.success) {
-          return { success: false, message: stockResult.message };
-        }
+      return { success: false, message: '订单已完成，请勿重复操作' };
+    }
+
+    const existingSale = sales.find(s => s.relatedOrderId === orderId);
+    if (existingSale) {
+      return { success: false, message: '该订单已生成过销售记录' };
+    }
+
+    for (const item of order.products) {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) {
+        return { success: false, message: `商品【${item.productName}】不存在，请先在成品档案中添加` };
+      }
+      if (product.quantity < item.quantity) {
+        return {
+          success: false,
+          message: `【${product.name}】库存不足：需要 ${item.quantity} 支，当前库存仅 ${product.quantity} 支`,
+        };
       }
     }
 
-    const statusResult = updateOrderStatus(orderId, 'completed');
-    if (!statusResult.success) return statusResult;
+    const now = formatDate(new Date());
+    order.products.forEach(item => {
+      setProducts(prev =>
+        prev.map(p => {
+          if (p.id !== item.productId) return p;
+          const newQty = Math.max(0, p.quantity - item.quantity);
+          return {
+            ...p,
+            quantity: newQty,
+            status: newQty <= 0 ? 'sold' : p.status,
+          };
+        })
+      );
+    });
+
+    setOrders(prev =>
+      prev.map(o =>
+        o.id === orderId
+          ? { ...o, status: 'completed', statusName: '已完成', completeDate: now }
+          : o
+      )
+    );
 
     let lastSale: SaleRecord | undefined;
-
+    const timestamp = Date.now();
     order.products.forEach((item, idx) => {
       const sale: SaleRecord = {
         id: generateId(),
-        orderNo: `XS${Date.now().toString().slice(-8)}${idx}`,
-        type: order.type === 'artist' || order.type === 'babyhair' ? 'retail' : 'retail',
-        typeName: getTypeNames[order.type === 'artist' || order.type === 'babyhair' ? 'retail' : 'retail'] || '零售',
+        orderNo: `XS${timestamp.toString().slice(-8)}${idx}`,
+        type: 'retail',
+        typeName: '零售',
         customerId: order.customerId,
         customerName: order.customerName,
         productId: item.productId,
@@ -251,8 +303,8 @@ export const AppProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         quantity: item.quantity,
         unitPrice: item.price,
         totalAmount: item.quantity * item.price,
-        date: formatDate(new Date()),
-        operator: '系统生成',
+        date: now,
+        operator: '订单完成自动生成',
         remark: `由订单【${order.orderNo}】自动生成`,
         relatedOrderId: order.id,
       };
