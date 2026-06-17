@@ -1,20 +1,42 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Button } from '@tarojs/components';
+import { View, Text, ScrollView, Button, Input, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useApp } from '../../store/AppContext';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import EmptyState from '../../components/EmptyState';
-import { formatPrice } from '../../utils';
+import Modal from '../../components/Modal';
+import { formatPrice, formatDate, generateId, getTypeNames } from '../../utils';
 import classnames from 'classnames';
 import styles from './index.module.scss';
+import { SaleType } from '../../types';
 
 const SalesPage: React.FC = () => {
-  const { sales } = useApp();
+  const { sales, customers, products, addSale } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [showSettleModal, setShowSettleModal] = useState(false);
+  const [showCustomerPicker, setShowCustomerPicker] = useState(false);
+  const [showProductPicker, setShowProductPicker] = useState(false);
+
+  const [formType, setFormType] = useState<SaleType | ''>('');
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [formCustomerName, setFormCustomerName] = useState('');
+  const [formProductId, setFormProductId] = useState('');
+  const [formProductName, setFormProductName] = useState('');
+  const [formQuantity, setFormQuantity] = useState('1');
+  const [formUnitPrice, setFormUnitPrice] = useState('');
+  const [formOperator, setFormOperator] = useState('当前笔匠');
+  const [formRemark, setFormRemark] = useState('');
 
   const tabs = [
     { key: 'all', label: '全部' },
+    { key: 'wholesale', label: '批发' },
+    { key: 'retail', label: '零售' },
+    { key: 'maintenance', label: '修笔养护' },
+  ];
+
+  const saleTypes = [
     { key: 'wholesale', label: '批发' },
     { key: 'retail', label: '零售' },
     { key: 'maintenance', label: '修笔养护' },
@@ -31,7 +53,8 @@ const SalesPage: React.FC = () => {
     const retailAmount = sales.filter(s => s.type === 'retail').reduce((sum, s) => sum + s.totalAmount, 0);
     const maintenanceAmount = sales.filter(s => s.type === 'maintenance').reduce((sum, s) => sum + s.totalAmount, 0);
     const transactionCount = sales.length;
-    return { totalAmount, wholesaleAmount, retailAmount, maintenanceAmount, transactionCount };
+    const avgOrder = transactionCount > 0 ? Math.round(totalAmount / transactionCount) : 0;
+    return { totalAmount, wholesaleAmount, retailAmount, maintenanceAmount, transactionCount, avgOrder };
   }, [sales]);
 
   const getTypeClass = (type: string) => {
@@ -48,18 +71,103 @@ const SalesPage: React.FC = () => {
     console.log('[Sales] 点击销售记录:', sale.orderNo, sale.id);
   };
 
+  const resetForm = () => {
+    setFormType('');
+    setFormCustomerId('');
+    setFormCustomerName('');
+    setFormProductId('');
+    setFormProductName('');
+    setFormQuantity('1');
+    setFormUnitPrice('');
+    setFormOperator('当前笔匠');
+    setFormRemark('');
+  };
+
   const handleAddSale = () => {
-    Taro.showToast({ title: '新增销售记录', icon: 'none' });
-    console.log('[Sales] 点击新增销售记录');
+    resetForm();
+    setShowAddModal(true);
+  };
+
+  const validateForm = (): string | null => {
+    if (!formType) return '请选择销售类型';
+    if (formType !== 'maintenance' && !formProductId) return '请选择商品';
+    const qty = parseFloat(formQuantity);
+    if (isNaN(qty) || qty <= 0) return '数量必须大于0';
+    const price = parseFloat(formUnitPrice);
+    if (isNaN(price) || price <= 0) return '单价必须大于0';
+    if (!formOperator.trim()) return '请填写经办人';
+    return null;
+  };
+
+  const generateOrderNo = (): string => {
+    const now = new Date();
+    const dateStr = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}`;
+    const todayCount = sales.filter(s => s.date === formatDate(now)).length + 1;
+    return `XS${dateStr}${String(todayCount).padStart(3, '0')}`;
+  };
+
+  const handleConfirmAdd = () => {
+    const error = validateForm();
+    if (error) {
+      Taro.showToast({ title: error, icon: 'none' });
+      return;
+    }
+
+    const quantity = parseFloat(formQuantity);
+    const unitPrice = parseFloat(formUnitPrice);
+    const totalAmount = Math.round(quantity * unitPrice * 100) / 100;
+
+    let productName = formProductName;
+    let productId = formProductId;
+    if (formType === 'maintenance') {
+      productName = formProductName || '修笔养护服务';
+      productId = formProductId || undefined;
+    }
+
+    const newSale = {
+      id: generateId(),
+      orderNo: generateOrderNo(),
+      type: formType as SaleType,
+      typeName: getTypeNames[formType],
+      customerId: formCustomerId || undefined,
+      customerName: formCustomerName || undefined,
+      productId: productId || undefined,
+      productName: productName || undefined,
+      quantity,
+      unitPrice,
+      totalAmount,
+      date: formatDate(new Date()),
+      operator: formOperator.trim(),
+      remark: formRemark || undefined,
+    };
+
+    addSale(newSale);
+    setShowAddModal(false);
+    Taro.showToast({ title: '添加成功', icon: 'success' });
+    console.log('[Sales] 新增销售记录:', newSale);
   };
 
   const handleSettle = () => {
-    Taro.showToast({ title: '收支结算', icon: 'none' });
-    console.log('[Sales] 点击收支结算');
+    setShowSettleModal(true);
   };
 
   const handleBack = () => {
     Taro.navigateBack();
+  };
+
+  const handleSelectCustomer = (customer: any) => {
+    setFormCustomerId(customer.id);
+    setFormCustomerName(customer.name);
+    setShowCustomerPicker(false);
+  };
+
+  const handleSelectProduct = (product: any) => {
+    setFormProductId(product.id);
+    setFormProductName(product.name);
+    if (!formUnitPrice) {
+      setFormUnitPrice(String(product.price));
+    }
+    setShowProductPicker(false);
   };
 
   return (
@@ -87,7 +195,7 @@ const SalesPage: React.FC = () => {
 
       <View className={styles.statsRow}>
         <StatCard title="交易笔数" value={stats.transactionCount} unit="笔" color="primary" />
-        <StatCard title="平均客单" value={Math.round(stats.totalAmount / stats.transactionCount)} unit="元" color="success" />
+        <StatCard title="平均客单" value={stats.avgOrder} unit="元" color="success" />
       </View>
 
       <View className={styles.actionRow}>
@@ -137,7 +245,9 @@ const SalesPage: React.FC = () => {
               {sale.productName && (
                 <View className={styles.productRow}>
                   <Text className={styles.productName}>{sale.productName}</Text>
-                  <Text className={styles.productQty}>x{sale.quantity}</Text>
+                  {sale.type !== 'maintenance' && sale.quantity > 0 && (
+                    <Text className={styles.productQty}>x{sale.quantity}</Text>
+                  )}
                   <Text className={styles.productPrice}>{formatPrice(sale.totalAmount)}</Text>
                 </View>
               )}
@@ -165,6 +275,216 @@ const SalesPage: React.FC = () => {
           />
         )}
       </ScrollView>
+
+      <Modal
+        visible={showAddModal}
+        title="新增销售记录"
+        onClose={() => setShowAddModal(false)}
+        onConfirm={handleConfirmAdd}
+        confirmText="保存"
+      >
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>销售类型</Text>
+          <View className={styles.tagGroup}>
+            {saleTypes.map(type => (
+              <View
+                key={type.key}
+                className={classnames(styles.tagItem, formType === type.key && styles.tagItemActive)}
+                onClick={() => {
+                  setFormType(type.key as SaleType);
+                  if (type.key === 'maintenance') {
+                    setFormProductId('');
+                    setFormProductName('');
+                    setFormQuantity('1');
+                  }
+                }}
+              >
+                <Text>{type.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>选择客户</Text>
+          <View className={styles.pickerWrap} onClick={() => setShowCustomerPicker(true)}>
+            <Text className={classnames(styles.pickerText, !formCustomerName && styles.pickerPlaceholder)}>
+              {formCustomerName || '请选择客户（选填）'}
+            </Text>
+          </View>
+        </View>
+
+        {formType !== 'maintenance' && (
+          <View className={styles.formGroup}>
+            <Text className={`${styles.label} ${styles.labelRequired}`}>选择商品</Text>
+            <View className={styles.pickerWrap} onClick={() => setShowProductPicker(true)}>
+              <Text className={classnames(styles.pickerText, !formProductName && styles.pickerPlaceholder)}>
+                {formProductName || '请选择商品'}
+              </Text>
+            </View>
+          </View>
+        )}
+
+        {formType === 'maintenance' && (
+          <View className={styles.formGroup}>
+            <Text className={styles.label}>服务内容</Text>
+            <Input
+              className={styles.input}
+              placeholder="修笔养护服务"
+              value={formProductName}
+              onInput={(e) => setFormProductName(e.detail.value)}
+            />
+          </View>
+        )}
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>数量</Text>
+          <Input
+            className={styles.input}
+            type="digit"
+            placeholder="请输入数量"
+            value={formQuantity}
+            onInput={(e) => setFormQuantity(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>单价（元）</Text>
+          <Input
+            className={styles.input}
+            type="digit"
+            placeholder="请输入单价"
+            value={formUnitPrice}
+            onInput={(e) => setFormUnitPrice(e.detail.value)}
+          />
+        </View>
+
+        {formQuantity && formUnitPrice && !isNaN(parseFloat(formQuantity)) && !isNaN(parseFloat(formUnitPrice)) && (
+          <View className={styles.formGroup}>
+            <Text className={styles.label}>小计金额</Text>
+            <Text style={{ fontSize: '36rpx', fontWeight: '600', color: '#8B4513' }}>
+              {formatPrice(parseFloat(formQuantity) * parseFloat(formUnitPrice))}
+            </Text>
+          </View>
+        )}
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>经办人</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入经办人"
+            value={formOperator}
+            onInput={(e) => setFormOperator(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>备注</Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="请输入备注信息（选填）"
+            value={formRemark}
+            onInput={(e) => setFormRemark(e.detail.value)}
+          />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={showCustomerPicker}
+        title="选择客户"
+        onClose={() => setShowCustomerPicker(false)}
+        showFooter={false}
+      >
+        {customers.length > 0 ? (
+          customers.map(customer => (
+            <View
+              key={customer.id}
+              className={styles.pickerWrap}
+              style={{ marginBottom: '16rpx' }}
+              onClick={() => handleSelectCustomer(customer)}
+            >
+              <View>
+                <Text className={styles.pickerText}>{customer.name}</Text>
+                <Text style={{ fontSize: '24rpx', color: '#999' }}>{customer.typeName} · {customer.phone}</Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <EmptyState icon="📋" title="暂无客户" description="请先添加客户" />
+        )}
+      </Modal>
+
+      <Modal
+        visible={showProductPicker}
+        title="选择商品"
+        onClose={() => setShowProductPicker(false)}
+        showFooter={false}
+      >
+        {products.length > 0 ? (
+          products.map(product => (
+            <View
+              key={product.id}
+              className={styles.pickerWrap}
+              style={{ marginBottom: '16rpx', height: 'auto', padding: '16rpx 24rpx' }}
+              onClick={() => handleSelectProduct(product)}
+            >
+              <View style={{ flex: 1 }}>
+                <Text className={styles.pickerText}>{product.name}</Text>
+                <Text style={{ fontSize: '24rpx', color: '#999' }}>
+                  {product.gradeName} · 库存{product.quantity} · {formatPrice(product.price)}
+                </Text>
+              </View>
+            </View>
+          ))
+        ) : (
+          <EmptyState icon="🖌️" title="暂无商品" description="请先添加商品" />
+        )}
+      </Modal>
+
+      <Modal
+        visible={showSettleModal}
+        title="收支结算"
+        onClose={() => setShowSettleModal(false)}
+        confirmText="确定"
+        cancelText="关闭"
+      >
+        <View className={styles.settleCard}>
+          <Text className={styles.settleTitle}>总收入</Text>
+          <Text className={styles.settleAmount}>{formatPrice(stats.totalAmount)}</Text>
+          <View className={styles.settleRow}>
+            <Text className={styles.settleLabel}>批发收入</Text>
+            <Text className={styles.settleValue}>{formatPrice(stats.wholesaleAmount)}</Text>
+          </View>
+          <View className={styles.settleRow}>
+            <Text className={styles.settleLabel}>零售收入</Text>
+            <Text className={styles.settleValue}>{formatPrice(stats.retailAmount)}</Text>
+          </View>
+          <View className={styles.settleRow}>
+            <Text className={styles.settleLabel}>养护收入</Text>
+            <Text className={styles.settleValue}>{formatPrice(stats.maintenanceAmount)}</Text>
+          </View>
+        </View>
+
+        <View className={styles.sectionTitle}>交易统计</View>
+        <View className={styles.settleRow}>
+          <Text className={styles.label}>总交易笔数</Text>
+          <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#333' }}>
+            {stats.transactionCount} 笔
+          </Text>
+        </View>
+        <View className={styles.settleRow}>
+          <Text className={styles.label}>平均客单价</Text>
+          <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#8B4513' }}>
+            {formatPrice(stats.avgOrder)}
+          </Text>
+        </View>
+
+        <View className={styles.divider} />
+        <View className={styles.settleRow}>
+          <Text className={styles.label}>结算日期</Text>
+          <Text style={{ fontSize: '28rpx', color: '#666' }}>{formatDate(new Date())}</Text>
+        </View>
+      </Modal>
     </View>
   );
 };

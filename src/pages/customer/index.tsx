@@ -1,16 +1,33 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Button } from '@tarojs/components';
+import { View, Text, ScrollView, Button, Input, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useApp } from '../../store/AppContext';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import EmptyState from '../../components/EmptyState';
+import Modal from '../../components/Modal';
+import { generateId, formatDate } from '../../utils';
+import { CustomerType } from '../../types';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 
+const CUSTOMER_TYPE_MAP: Record<CustomerType, string> = {
+  artist: '书画家',
+  wholesale: '批发商',
+  retail: '零售',
+  other: '其他',
+};
+
 const CustomerPage: React.FC = () => {
-  const { customers } = useApp();
+  const { customers, addCustomer } = useApp();
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formType, setFormType] = useState<CustomerType>('artist');
+  const [formPhone, setFormPhone] = useState('');
+  const [formContact, setFormContact] = useState('');
+  const [formAddress, setFormAddress] = useState('');
+  const [formRemark, setFormRemark] = useState('');
 
   const filters = [
     { key: 'all', label: '全部' },
@@ -50,11 +67,55 @@ const CustomerPage: React.FC = () => {
   const handleCallPhone = (phone: string) => {
     Taro.showToast({ title: `拨打 ${phone}`, icon: 'none' });
     console.log('[Customer] 点击拨打电话:', phone);
+    Taro.makePhoneCall({ phoneNumber: phone });
+  };
+
+  const resetForm = () => {
+    setFormName('');
+    setFormType('artist');
+    setFormPhone('');
+    setFormContact('');
+    setFormAddress('');
+    setFormRemark('');
   };
 
   const handleAddCustomer = () => {
-    Taro.showToast({ title: '新增客户', icon: 'none' });
+    resetForm();
+    setModalVisible(true);
     console.log('[Customer] 点击新增客户');
+  };
+
+  const handleCloseModal = () => {
+    setModalVisible(false);
+  };
+
+  const handleSubmitCustomer = () => {
+    if (!formName.trim()) {
+      Taro.showToast({ title: '请输入客户姓名/名称', icon: 'none' });
+      return;
+    }
+    if (!formPhone.trim()) {
+      Taro.showToast({ title: '请输入手机号码', icon: 'none' });
+      return;
+    }
+
+    const newCustomer = {
+      id: generateId(),
+      name: formName.trim(),
+      type: formType,
+      typeName: CUSTOMER_TYPE_MAP[formType],
+      phone: formPhone.trim(),
+      contact: formContact.trim() || formName.trim(),
+      address: formAddress.trim(),
+      createDate: formatDate(new Date()),
+      remark: formRemark.trim() || undefined,
+    };
+
+    addCustomer(newCustomer);
+    setModalVisible(false);
+    resetForm();
+    Taro.showToast({ title: '新增成功', icon: 'success' });
+    console.log('[Customer] 新增客户:', newCustomer);
   };
 
   const handleBack = () => {
@@ -139,6 +200,83 @@ const CustomerPage: React.FC = () => {
           />
         )}
       </ScrollView>
+
+      <Modal
+        visible={modalVisible}
+        title="新增客户"
+        onClose={handleCloseModal}
+        onConfirm={handleSubmitCustomer}
+        confirmText="保存"
+        cancelText="取消"
+      >
+        <View className={styles.formGroup}>
+          <Text className={classnames(styles.label, styles.labelRequired)}>客户姓名/名称</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入客户姓名/名称"
+            value={formName}
+            onInput={(e) => setFormName(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>客户类型</Text>
+          <View className={styles.tagGroup}>
+            {Object.entries(CUSTOMER_TYPE_MAP).map(([key, label]) => (
+              <View
+                key={key}
+                className={classnames(styles.tagItem, formType === key && styles.tagItemActive)}
+                onClick={() => setFormType(key as CustomerType)}
+              >
+                <Text>{label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={classnames(styles.label, styles.labelRequired)}>手机号码</Text>
+          <Input
+            className={styles.input}
+            type="number"
+            placeholder="请输入手机号码"
+            value={formPhone}
+            onInput={(e) => setFormPhone(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>联系人</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入联系人（默认同客户姓名）"
+            value={formContact}
+            onInput={(e) => setFormContact(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>地址</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入地址"
+            value={formAddress}
+            onInput={(e) => setFormAddress(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.divider} />
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>备注</Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="请输入备注信息"
+            value={formRemark}
+            onInput={(e) => setFormRemark(e.detail.value)}
+          />
+        </View>
+      </Modal>
     </View>
   );
 };

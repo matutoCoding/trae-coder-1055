@@ -1,17 +1,34 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Button } from '@tarojs/components';
+import { View, Text, ScrollView, Button, Input, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useApp } from '../../store/AppContext';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import EmptyState from '../../components/EmptyState';
-import { formatPrice } from '../../utils';
+import Modal from '../../components/Modal';
+import { formatPrice, generateId, formatDate } from '../../utils';
+import { brushSpecs } from '../../data/processes';
 import classnames from 'classnames';
 import styles from './index.module.scss';
 
+const gradeOptions = [
+  { key: 'premium', label: '极品' },
+  { key: 'fine', label: '精品' },
+  { key: 'standard', label: '优品' },
+  { key: 'normal', label: '普通' },
+];
+
 const ProductPage: React.FC = () => {
-  const { products } = useApp();
+  const { products, materials, addProduct } = useApp();
   const [activeFilter, setActiveFilter] = useState<string>('all');
+  const [modalVisible, setModalVisible] = useState(false);
+  const [formName, setFormName] = useState('');
+  const [formSpec, setFormSpec] = useState<any>(null);
+  const [formGrade, setFormGrade] = useState('');
+  const [formQuantity, setFormQuantity] = useState('');
+  const [formPrice, setFormPrice] = useState('');
+  const [formMaterials, setFormMaterials] = useState<string[]>([]);
+  const [formRemark, setFormRemark] = useState('');
 
   const filters = [
     { key: 'all', label: '全部' },
@@ -60,9 +77,76 @@ const ProductPage: React.FC = () => {
     console.log('[Product] 点击成品:', product.name, product.id);
   };
 
+  const resetForm = () => {
+    setFormName('');
+    setFormSpec(null);
+    setFormGrade('');
+    setFormQuantity('');
+    setFormPrice('');
+    setFormMaterials([]);
+    setFormRemark('');
+  };
+
   const handleAddProduct = () => {
-    Taro.showToast({ title: '成品入库', icon: 'none' });
+    resetForm();
+    setModalVisible(true);
     console.log('[Product] 点击成品入库');
+  };
+
+  const toggleMaterial = (materialId: string) => {
+    setFormMaterials(prev =>
+      prev.includes(materialId)
+        ? prev.filter(id => id !== materialId)
+        : [...prev, materialId]
+    );
+  };
+
+  const handleSubmit = () => {
+    if (!formName.trim()) {
+      Taro.showToast({ title: '请输入成品名称', icon: 'none' });
+      return;
+    }
+    if (!formSpec) {
+      Taro.showToast({ title: '请选择笔头规格', icon: 'none' });
+      return;
+    }
+    if (!formGrade) {
+      Taro.showToast({ title: '请选择品质等级', icon: 'none' });
+      return;
+    }
+    const qty = Number(formQuantity);
+    if (!qty || qty <= 0) {
+      Taro.showToast({ title: '数量必须大于0', icon: 'none' });
+      return;
+    }
+    const price = Number(formPrice);
+    if (!price || price <= 0) {
+      Taro.showToast({ title: '价格必须大于0', icon: 'none' });
+      return;
+    }
+
+    const gradeName = gradeOptions.find(g => g.key === formGrade)?.label || '';
+
+    const newProduct = {
+      id: generateId(),
+      name: formName.trim(),
+      spec: formSpec,
+      grade: formGrade,
+      gradeName,
+      materials: formMaterials,
+      processRecords: [],
+      createDate: formatDate(new Date()),
+      quantity: qty,
+      price,
+      status: 'instock' as const,
+      remark: formRemark.trim() || undefined,
+    };
+
+    addProduct(newProduct);
+    Taro.showToast({ title: '入库成功', icon: 'success' });
+    console.log('[Product] 新增成品:', newProduct);
+    setModalVisible(false);
+    resetForm();
   };
 
   return (
@@ -152,6 +236,110 @@ const ProductPage: React.FC = () => {
       >
         <Text>➕ 成品入库</Text>
       </Button>
+
+      <Modal
+        visible={modalVisible}
+        title="成品入库"
+        onClose={() => setModalVisible(false)}
+        onConfirm={handleSubmit}
+        confirmText="确认入库"
+        cancelText="取消"
+      >
+        <View className={styles.sectionTitle}>基础信息</View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>成品名称</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入成品名称"
+            value={formName}
+            onInput={(e) => setFormName(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>笔头规格</Text>
+          <View className={styles.tagGroup}>
+            {brushSpecs.map(spec => (
+              <View
+                key={spec.id}
+                className={classnames(styles.tagItem, formSpec?.id === spec.id && styles.tagItemActive)}
+                onClick={() => setFormSpec(spec)}
+              >
+                <Text>{spec.name} · {spec.length}mm</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>品质等级</Text>
+          <View className={styles.tagGroup}>
+            {gradeOptions.map(grade => (
+              <View
+                key={grade.key}
+                className={classnames(styles.tagItem, formGrade === grade.key && styles.tagItemActive)}
+                onClick={() => setFormGrade(grade.key)}
+              >
+                <Text>{grade.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.divider} />
+        <View className={styles.sectionTitle}>数量与价格</View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>成品数量（支）</Text>
+          <Input
+            className={styles.input}
+            type="number"
+            placeholder="请输入成品数量"
+            value={formQuantity}
+            onInput={(e) => setFormQuantity(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>单支价格（元）</Text>
+          <Input
+            className={styles.input}
+            type="digit"
+            placeholder="请输入单支价格"
+            value={formPrice}
+            onInput={(e) => setFormPrice(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.divider} />
+        <View className={styles.sectionTitle}>关联信息</View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>关联毛料（可多选）</Text>
+          <View className={styles.tagGroup}>
+            {materials.map(material => (
+              <View
+                key={material.id}
+                className={classnames(styles.tagItem, formMaterials.includes(material.id) && styles.tagItemActive)}
+                onClick={() => toggleMaterial(material.id)}
+              >
+                <Text>{material.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>备注</Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="请输入备注信息（选填）"
+            value={formRemark}
+            onInput={(e) => setFormRemark(e.detail.value)}
+          />
+        </View>
+      </Modal>
     </View>
   );
 };

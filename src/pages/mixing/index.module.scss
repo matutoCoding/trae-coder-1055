@@ -209,3 +209,198 @@
   color: $color-text-tertiary;
   @include text-ellipsis-multi(2);
 }
+
+.formGroup {
+  margin-bottom: $spacing-lg;
+}
+
+.label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+  margin-bottom: $spacing-sm;
+  display: block;
+}
+
+.labelRequired::before {
+  content: '*';
+  color: $color-error;
+  margin-right: $spacing-xs;
+}
+
+.input {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 $spacing-md;
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.textarea {
+  width: 100%;
+  min-height: 160rpx;
+  padding: $spacing-md;
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  box-sizing: border-box;
+}
+
+.tagGroup {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.tagItem {
+  padding: $spacing-sm $spacing-md;
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-button;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  transition: all $transition-fast;
+}
+
+.tagItemActive {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-color: $color-primary;
+  color: $color-text-white;
+}
+
+.pickerWrap {
+  width: 100%;
+  height: 84rpx;
+  padding: 0 $spacing-md;
+  background: $color-bg-card;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-md;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+.pickerText {
+  font-size: $font-size-md;
+  color: $color-text-primary;
+  flex: 1;
+}
+
+.pickerPlaceholder {
+  color: $color-text-disabled;
+}
+
+.sectionTitle {
+  font-size: $font-size-md;
+  font-weight: $font-weight-semibold;
+  color: $color-text-primary;
+  margin-bottom: $spacing-md;
+  padding-left: $spacing-sm;
+  border-left: 6rpx solid $color-primary;
+}
+
+.mixingItem {
+  background: $color-bg-card;
+  border-radius: $radius-md;
+  padding: $spacing-md;
+  margin-bottom: $spacing-md;
+  border: 2rpx solid $color-border;
+}
+
+.mixingHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: $spacing-sm;
+}
+
+.mixingName {
+  font-size: $font-size-md;
+  font-weight: $font-weight-medium;
+  color: $color-text-primary;
+}
+
+.removeBtn {
+  font-size: $font-size-sm;
+  color: $color-error;
+}
+
+.mixingRatio {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.ratioInput {
+  flex: 1;
+  height: 64rpx;
+  padding: 0 $spacing-sm;
+  border: 2rpx solid $color-border;
+  border-radius: $radius-sm;
+  font-size: $font-size-sm;
+  box-sizing: border-box;
+}
+
+.ratioUnit {
+  font-size: $font-size-sm;
+  color: $color-text-tertiary;
+}
+
+.divider {
+  height: 1rpx;
+  background: $color-divider;
+  margin: $spacing-lg 0;
+}
+
+.filterBar {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-sm;
+  padding: 0 $page-padding $spacing-md;
+}
+
+.filterRow {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+}
+
+.filterLabel {
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  min-width: 120rpx;
+  font-weight: $font-weight-medium;
+}
+
+.filterTags {
+  display: flex;
+  gap: $spacing-sm;
+  overflow-x: auto;
+  @include scroll-x-container;
+  flex: 1;
+}
+
+.filterTag {
+  @include scroll-x-item(auto);
+  padding: $spacing-xs $spacing-md;
+  background: $color-bg-card;
+  border-radius: $radius-button;
+  border: 2rpx solid transparent;
+  transition: all $transition-base;
+  font-size: $font-size-sm;
+  color: $color-text-secondary;
+  white-space: nowrap;
+}
+
+.filterTagActive {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  border-color: $color-primary;
+  color: $color-text-white;
+}
+

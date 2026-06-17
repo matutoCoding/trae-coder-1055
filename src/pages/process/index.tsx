@@ -1,18 +1,40 @@
 import React, { useState, useMemo } from 'react';
-import { View, Text, ScrollView, Button } from '@tarojs/components';
+import { View, Text, ScrollView, Button, Input, Textarea } from '@tarojs/components';
 import Taro from '@tarojs/taro';
 import { useApp } from '../../store/AppContext';
 import PageHeader from '../../components/PageHeader';
 import StatCard from '../../components/StatCard';
 import ProcessStep from '../../components/ProcessStep';
 import EmptyState from '../../components/EmptyState';
+import Modal from '../../components/Modal';
 import { brushSpecs } from '../../data/processes';
 import { ProcessType } from '../../types';
+import { generateId, formatDate } from '../../utils';
 import styles from './index.module.scss';
 
+const processTypeOptions = [
+  { key: 'basin', label: '水盆' },
+  { key: 'select', label: '择笔' },
+  { key: 'assemble', label: '装笔' },
+  { key: 'repair', label: '修笔' },
+  { key: 'test', label: '试笔' },
+];
+
+const qualityOptions = ['极品', '优良', '精品', '优品', '普通'];
+
 const ProcessPage: React.FC = () => {
-  const { processes } = useApp();
+  const { processes, addProcess } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
+  const [addModalVisible, setAddModalVisible] = useState(false);
+  const [specModalVisible, setSpecModalVisible] = useState(false);
+
+  const [formName, setFormName] = useState('');
+  const [formType, setFormType] = useState('');
+  const [formTypeName, setFormTypeName] = useState('');
+  const [formOperator, setFormOperator] = useState('');
+  const [formDuration, setFormDuration] = useState('');
+  const [formQuality, setFormQuality] = useState('');
+  const [formRemark, setFormRemark] = useState('');
 
   const tabs = [
     { key: 'all', label: '全部工序' },
@@ -36,14 +58,23 @@ const ProcessPage: React.FC = () => {
     return { total, basinCount, totalDuration, excellentCount };
   }, [processes]);
 
+  const resetForm = () => {
+    setFormName('');
+    setFormType('');
+    setFormTypeName('');
+    setFormOperator('');
+    setFormDuration('');
+    setFormQuality('');
+    setFormRemark('');
+  };
+
   const handleAddProcess = () => {
-    Taro.showToast({ title: '添加工序记录', icon: 'none' });
-    console.log('[Process] 点击添加工序记录');
+    resetForm();
+    setAddModalVisible(true);
   };
 
   const handleViewSpecs = () => {
-    Taro.showToast({ title: '笔头规格管理', icon: 'none' });
-    console.log('[Process] 点击笔头规格管理');
+    setSpecModalVisible(true);
   };
 
   const handleSpecClick = (spec: any) => {
@@ -54,6 +85,47 @@ const ProcessPage: React.FC = () => {
   const handleProcessClick = (process: any) => {
     Taro.showToast({ title: `查看${process.name}`, icon: 'none' });
     console.log('[Process] 点击工序:', process.name, process.id);
+  };
+
+  const handleTypeSelect = (key: string, label: string) => {
+    setFormType(key);
+    setFormTypeName(label + '工序');
+  };
+
+  const handleSubmitProcess = () => {
+    if (!formName.trim()) {
+      Taro.showToast({ title: '请输入工序名称', icon: 'none' });
+      return;
+    }
+    if (!formType) {
+      Taro.showToast({ title: '请选择工序类型', icon: 'none' });
+      return;
+    }
+    if (!formOperator.trim()) {
+      Taro.showToast({ title: '请输入操作人', icon: 'none' });
+      return;
+    }
+    if (!formDuration || parseInt(formDuration) <= 0) {
+      Taro.showToast({ title: '请输入有效的工序时长', icon: 'none' });
+      return;
+    }
+
+    const newProcess = {
+      id: generateId(),
+      name: formName.trim(),
+      type: formType as ProcessType,
+      typeName: formTypeName,
+      operator: formOperator.trim(),
+      duration: parseInt(formDuration),
+      quality: formQuality || '优品',
+      date: formatDate(new Date()),
+      remark: formRemark.trim(),
+    };
+
+    addProcess(newProcess);
+    Taro.showToast({ title: '添加成功', icon: 'success' });
+    setAddModalVisible(false);
+    resetForm();
   };
 
   return (
@@ -78,7 +150,7 @@ const ProcessPage: React.FC = () => {
       <View className={styles.specSection}>
         <Text className={styles.specTitle}>笔头规格</Text>
         <ScrollView scrollX className={styles.specGrid}>
-          {brushSpecs.slice(0, 6).map(spec => (
+          {brushSpecs.map(spec => (
             <View key={spec.id} className={styles.specCard} onClick={() => handleSpecClick(spec)}>
               <Text className={styles.specName}>{spec.name}</Text>
               <Text className={styles.specInfo}>
@@ -134,6 +206,119 @@ const ProcessPage: React.FC = () => {
           </View>
         )}
       </ScrollView>
+
+      <Modal
+        visible={addModalVisible}
+        title="添加工序"
+        onClose={() => setAddModalVisible(false)}
+        onConfirm={handleSubmitProcess}
+        confirmText="保存"
+        cancelText="取消"
+      >
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>工序名称</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入工序名称"
+            value={formName}
+            onInput={(e) => setFormName(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>工序类型</Text>
+          <View className={styles.tagGroup}>
+            {processTypeOptions.map(opt => (
+              <View
+                key={opt.key}
+                className={`${styles.tagItem} ${formType === opt.key ? styles.tagItemActive : ''}`}
+                onClick={() => handleTypeSelect(opt.key, opt.label)}
+              >
+                <Text>{opt.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>操作人</Text>
+          <Input
+            className={styles.input}
+            placeholder="请输入操作人姓名"
+            value={formOperator}
+            onInput={(e) => setFormOperator(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={`${styles.label} ${styles.labelRequired}`}>工序时长（分钟）</Text>
+          <Input
+            className={styles.input}
+            type="number"
+            placeholder="请输入工序时长"
+            value={formDuration}
+            onInput={(e) => setFormDuration(e.detail.value)}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>品质等级</Text>
+          <View className={styles.tagGroup}>
+            {qualityOptions.map(opt => (
+              <View
+                key={opt}
+                className={`${styles.tagItem} ${formQuality === opt ? styles.tagItemActive : ''}`}
+                onClick={() => setFormQuality(opt)}
+              >
+                <Text>{opt}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>备注说明</Text>
+          <Textarea
+            className={styles.textarea}
+            placeholder="请输入备注说明（选填）"
+            value={formRemark}
+            onInput={(e) => setFormRemark(e.detail.value)}
+          />
+        </View>
+      </Modal>
+
+      <Modal
+        visible={specModalVisible}
+        title="笔头规格管理"
+        onClose={() => setSpecModalVisible(false)}
+        showFooter={false}
+      >
+        <Text className={styles.sectionTitle}>全部笔头规格（{brushSpecs.length}种）</Text>
+        {brushSpecs.map(spec => (
+          <View key={spec.id} className={styles.specCard} onClick={() => handleSpecClick(spec)}>
+            <View className={styles.specRow}>
+              <Text className={styles.specLabel}>名称</Text>
+              <Text className={styles.specValue}>{spec.name}</Text>
+            </View>
+            <View className={styles.specRow}>
+              <Text className={styles.specLabel}>锋长</Text>
+              <Text className={styles.specValue}>{spec.length}mm</Text>
+            </View>
+            <View className={styles.specRow}>
+              <Text className={styles.specLabel}>直径</Text>
+              <Text className={styles.specValue}>{spec.diameter}mm</Text>
+            </View>
+            <View className={styles.specRow}>
+              <Text className={styles.specLabel}>毛量</Text>
+              <Text className={styles.specValue}>{spec.hairCount}根</Text>
+            </View>
+            <View className={styles.specRow}>
+              <Text className={styles.specLabel}>用途</Text>
+              <Text className={styles.specValue}>{spec.purpose}</Text>
+            </View>
+          </View>
+        ))}
+      </Modal>
     </View>
   );
 };
