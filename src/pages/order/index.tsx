@@ -8,9 +8,10 @@ import OrderCard from '../../components/OrderCard';
 import EmptyState from '../../components/EmptyState';
 import Modal from '../../components/Modal';
 import { formatPrice, generateId, formatDate } from '../../utils';
-import { OrderType } from '../../types';
+import { OrderType, Order } from '../../types';
 import classnames from 'classnames';
 import styles from './index.module.scss';
+import orderCardStyles from '../../components/OrderCard/index.module.scss';
 
 const typeOptions: { key: OrderType; label: string }[] = [
   { key: 'normal', label: '普通订单' },
@@ -22,6 +23,7 @@ const statusNames: Record<string, string> = {
   pending: '待处理',
   processing: '制作中',
   completed: '已完成',
+  paid: '已收款',
   cancelled: '已取消',
 };
 
@@ -39,7 +41,7 @@ interface FormProduct {
 }
 
 const OrderPage: React.FC = () => {
-  const { orders, customers, products, addOrder } = useApp();
+  const { orders, customers, products, addOrder, updateOrderStatus, completeOrderAndCreateSale } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [modalVisible, setModalVisible] = useState(false);
   const [formType, setFormType] = useState<OrderType>('normal');
@@ -72,9 +74,9 @@ const OrderPage: React.FC = () => {
   const stats = useMemo(() => {
     const total = orders.length;
     const pendingCount = orders.filter(o => o.status === 'pending').length;
-    const totalAmount = orders.reduce((sum, o) => sum + o.totalAmount, 0);
-    const customCount = orders.filter(o => o.type === 'artist' || o.type === 'babyhair').length;
-    return { total, pendingCount, totalAmount, customCount };
+    const processingCount = orders.filter(o => o.status === 'processing').length;
+    const completedCount = orders.filter(o => o.status === 'completed').length;
+    return { total, pendingCount, processingCount, completedCount };
   }, [orders]);
 
   const totalAmount = useMemo(() => {
@@ -178,6 +180,70 @@ const OrderPage: React.FC = () => {
     setFormProducts(prev => prev.map((p, i) => (i === index ? { ...p, [field]: value } : p)));
   };
 
+  const handleStartProcessing = (orderId: string) => {
+    const result = updateOrderStatus(orderId, 'processing');
+    if (result.success) {
+      Taro.showToast({ title: '已开始制作', icon: 'success' });
+      console.log('[Order] 开始制作订单:', orderId);
+    } else {
+      Taro.showToast({ title: result.message || '操作失败', icon: 'none' });
+    }
+  };
+
+  const handleCompleteOrder = (orderId: string) => {
+    const result = completeOrderAndCreateSale(orderId);
+    if (result.success) {
+      Taro.showToast({ title: '订单完成，已生成销售记录并扣减库存', icon: 'success', duration: 2500 });
+      console.log('[Order] 完成订单并生成销售记录:', orderId);
+    } else {
+      Taro.showToast({ title: result.message || '操作失败', icon: 'none', duration: 2500 });
+    }
+  };
+
+  const handleConfirmPaid = (orderId: string) => {
+    const result = updateOrderStatus(orderId, 'paid');
+    if (result.success) {
+      Taro.showToast({ title: '已确认收款', icon: 'success' });
+      console.log('[Order] 确认收款订单:', orderId);
+    } else {
+      Taro.showToast({ title: result.message || '操作失败', icon: 'none' });
+    }
+  };
+
+  const renderOrderActions = (order: Order) => {
+    if (order.status === 'pending') {
+      return (
+        <View
+          className={classnames(orderCardStyles.actionBtn, orderCardStyles.actionBtnInfo)}
+          onClick={() => handleStartProcessing(order.id)}
+        >
+          <Text>开始制作</Text>
+        </View>
+      );
+    }
+    if (order.status === 'processing') {
+      return (
+        <View
+          className={classnames(orderCardStyles.actionBtn, orderCardStyles.actionBtnSuccess)}
+          onClick={() => handleCompleteOrder(order.id)}
+        >
+          <Text>完成制作</Text>
+        </View>
+      );
+    }
+    if (order.status === 'completed') {
+      return (
+        <View
+          className={classnames(orderCardStyles.actionBtn, orderCardStyles.actionBtnPrimary)}
+          onClick={() => handleConfirmPaid(order.id)}
+        >
+          <Text>确认收款</Text>
+        </View>
+      );
+    }
+    return null;
+  };
+
   const handleSubmit = () => {
     if (formCustomerIndex < 0) {
       Taro.showToast({ title: '请选择客户', icon: 'none' });
@@ -254,7 +320,8 @@ const OrderPage: React.FC = () => {
       <View className={styles.statsRow}>
         <StatCard title="订单总数" value={stats.total} unit="单" color="primary" />
         <StatCard title="待处理" value={stats.pendingCount} unit="单" color="warning" />
-        <StatCard title="总金额" value={formatPrice(stats.totalAmount)} color="success" />
+        <StatCard title="制作中" value={stats.processingCount} unit="单" color="info" />
+        <StatCard title="已完成" value={stats.completedCount} unit="单" color="success" />
       </View>
 
       <View className={styles.quickEntry}>
@@ -304,6 +371,7 @@ const OrderPage: React.FC = () => {
               key={order.id}
               order={order}
               onClick={() => handleOrderClick(order)}
+              actions={renderOrderActions(order)}
             />
           ))
         ) : (

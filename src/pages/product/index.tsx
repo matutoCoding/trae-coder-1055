@@ -19,7 +19,7 @@ const gradeOptions = [
 ];
 
 const ProductPage: React.FC = () => {
-  const { products, materials, addProduct } = useApp();
+  const { products, materials, mixings, processes, addProductWithRelations } = useApp();
   const [activeFilter, setActiveFilter] = useState<string>('all');
   const [modalVisible, setModalVisible] = useState(false);
   const [formName, setFormName] = useState('');
@@ -28,6 +28,8 @@ const ProductPage: React.FC = () => {
   const [formQuantity, setFormQuantity] = useState('');
   const [formPrice, setFormPrice] = useState('');
   const [formMaterials, setFormMaterials] = useState<string[]>([]);
+  const [formMixingId, setFormMixingId] = useState('');
+  const [formProcessIds, setFormProcessIds] = useState<string[]>([]);
   const [formRemark, setFormRemark] = useState('');
 
   const filters = [
@@ -72,6 +74,14 @@ const ProductPage: React.FC = () => {
     return classMap[grade] || styles.gradeNormal;
   };
 
+  const toggleProcess = (processId: string) => {
+    setFormProcessIds(prev =>
+      prev.includes(processId)
+        ? prev.filter(id => id !== processId)
+        : [...prev, processId]
+    );
+  };
+
   const handleProductClick = (product: any) => {
     Taro.showToast({ title: `查看${product.name}`, icon: 'none' });
     console.log('[Product] 点击成品:', product.name, product.id);
@@ -84,6 +94,8 @@ const ProductPage: React.FC = () => {
     setFormQuantity('');
     setFormPrice('');
     setFormMaterials([]);
+    setFormMixingId('');
+    setFormProcessIds([]);
     setFormRemark('');
   };
 
@@ -134,7 +146,7 @@ const ProductPage: React.FC = () => {
       grade: formGrade,
       gradeName,
       materials: formMaterials,
-      processRecords: [],
+      processRecords: formProcessIds,
       createDate: formatDate(new Date()),
       quantity: qty,
       price,
@@ -142,7 +154,11 @@ const ProductPage: React.FC = () => {
       remark: formRemark.trim() || undefined,
     };
 
-    addProduct(newProduct);
+    const result = addProductWithRelations(newProduct, formMixingId || undefined, formProcessIds);
+    if (!result.success) {
+      Taro.showToast({ title: result.message || '入库失败', icon: 'none' });
+      return;
+    }
     Taro.showToast({ title: '入库成功', icon: 'success' });
     console.log('[Product] 新增成品:', newProduct);
     setModalVisible(false);
@@ -157,6 +173,7 @@ const ProductPage: React.FC = () => {
         <StatCard title="成品种类" value={stats.total} unit="种" color="primary" />
         <StatCard title="库存数量" value={stats.inStock} unit="支" color="success" />
         <StatCard title="总价值" value={stats.totalValue} unit="元" color="warning" />
+        <StatCard title="极品数量" value={stats.premiumCount} unit="支" color="info" />
       </View>
 
       <ScrollView scrollX className={styles.filterBar}>
@@ -200,6 +217,12 @@ const ProductPage: React.FC = () => {
                   <Text className={styles.gridLabel}>工序</Text>
                   <Text className={styles.gridValue}>{product.processRecords.length}道</Text>
                 </View>
+                {product.mixingId && (
+                  <View className={styles.productGridItem}>
+                    <Text className={styles.gridLabel}>配方</Text>
+                    <Text className={styles.gridValue}>已关联</Text>
+                  </View>
+                )}
               </View>
 
               {product.remark && <Text className={styles.remark}>💡 {product.remark}</Text>}
@@ -327,6 +350,46 @@ const ProductPage: React.FC = () => {
                 <Text>{material.name}</Text>
               </View>
             ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>关联配料配方</Text>
+          <View className={styles.tagGroup}>
+            <View
+              className={classnames(styles.tagItem, !formMixingId && styles.tagItemActive)}
+              onClick={() => setFormMixingId('')}
+            >
+              <Text>不关联</Text>
+            </View>
+            {mixings.map(mixing => (
+              <View
+                key={mixing.id}
+                className={classnames(styles.tagItem, formMixingId === mixing.id && styles.tagItemActive)}
+                onClick={() => setFormMixingId(mixing.id)}
+              >
+                <Text>{mixing.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>关联工序记录（可多选）</Text>
+          <View className={styles.tagGroup}>
+            {processes.length === 0 ? (
+              <Text className={styles.pickerPlaceholder}>暂无可选工序，请先在工序页面添加工序</Text>
+            ) : (
+              processes.map(proc => (
+                <View
+                  key={proc.id}
+                  className={classnames(styles.tagItem, formProcessIds.includes(proc.id) && styles.tagItemActive)}
+                  onClick={() => toggleProcess(proc.id)}
+                >
+                  <Text>{proc.typeName}·{proc.name}</Text>
+                </View>
+              ))
+            )}
           </View>
         </View>
 

@@ -16,12 +16,16 @@ interface MixingMaterialForm {
 }
 
 const MixingPage: React.FC = () => {
-  const { mixings, materials, addMixing } = useApp();
+  const { mixings, materials, addMixing, addMixingWithStock, duplicateMixing } = useApp();
   const [showForm, setShowForm] = useState(false);
   const [showMaterialPicker, setShowMaterialPicker] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [currentMaterialIndex, setCurrentMaterialIndex] = useState<number | null>(null);
   const [selectedPurposeFilter, setSelectedPurposeFilter] = useState<string>('全部');
   const [selectedOperatorFilter, setSelectedOperatorFilter] = useState<string>('全部');
+  const [historyPurposeFilter, setHistoryPurposeFilter] = useState<string>('全部');
+  const [historyOperatorFilter, setHistoryOperatorFilter] = useState<string>('全部');
+  const [historyMaterialFilters, setHistoryMaterialFilters] = useState<string[]>([]);
 
   const [formName, setFormName] = useState('');
   const [formPurpose, setFormPurpose] = useState('');
@@ -55,6 +59,38 @@ const MixingPage: React.FC = () => {
     });
   }, [mixings, selectedPurposeFilter, selectedOperatorFilter]);
 
+  const historyPurposeOptions = useMemo(() => {
+    const purposes = Array.from(new Set(mixings.map(m => m.purpose)));
+    return ['全部', ...purposes];
+  }, [mixings]);
+
+  const historyOperatorOptions = useMemo(() => {
+    const operators = Array.from(new Set(mixings.map(m => m.operator)));
+    return ['全部', ...operators];
+  }, [mixings]);
+
+  const filteredHistoryMixings = useMemo(() => {
+    return mixings.filter(m => {
+      const matchPurpose = historyPurposeFilter === '全部' || m.purpose === historyPurposeFilter;
+      const matchOperator = historyOperatorFilter === '全部' || m.operator === historyOperatorFilter;
+      let matchMaterial = true;
+      if (historyMaterialFilters.length > 0) {
+        matchMaterial = m.materials.some(mat => historyMaterialFilters.includes(mat.materialId));
+      }
+      return matchPurpose && matchOperator && matchMaterial;
+    });
+  }, [mixings, historyPurposeFilter, historyOperatorFilter, historyMaterialFilters]);
+
+  const toggleHistoryMaterialFilter = (materialId: string) => {
+    setHistoryMaterialFilters(prev => {
+      if (prev.includes(materialId)) {
+        return prev.filter(id => id !== materialId);
+      } else {
+        return [...prev, materialId];
+      }
+    });
+  };
+
   const resetForm = () => {
     setFormName('');
     setFormPurpose('');
@@ -71,9 +107,35 @@ const MixingPage: React.FC = () => {
     setShowForm(true);
   };
 
+  const handleDuplicateMixing = (id: string) => {
+    const duplicated = duplicateMixing(id);
+    if (!duplicated) {
+      Taro.showToast({ title: '复制失败', icon: 'none' });
+      return;
+    }
+    setFormName(duplicated.name);
+    setFormPurpose(duplicated.purpose);
+    setFormOperator(duplicated.operator);
+    setFormTotalWeight(String(duplicated.totalWeight));
+    setFormMaterials(
+      duplicated.materials.map(m => ({
+        materialId: m.materialId,
+        materialName: m.materialName,
+        ratio: m.ratio,
+      }))
+    );
+    setFormRemark(duplicated.remark || '');
+    setShowHistoryModal(false);
+    setShowForm(true);
+    console.log('[Mixing] 复制配方并打开编辑:', duplicated.name);
+  };
+
   const handleViewHistory = () => {
-    Taro.showToast({ title: '历史配比查询', icon: 'none' });
-    console.log('[Mixing] 点击历史配比查询');
+    setHistoryPurposeFilter('全部');
+    setHistoryOperatorFilter('全部');
+    setHistoryMaterialFilters([]);
+    setShowHistoryModal(true);
+    console.log('[Mixing] 打开历史配方库');
   };
 
   const handleCardClick = (mixing: any) => {
@@ -195,11 +257,16 @@ const MixingPage: React.FC = () => {
       remark: formRemark.trim() || undefined,
     };
 
-    addMixing(newRecord);
-    Taro.showToast({ title: '保存成功', icon: 'success' });
-    console.log('[Mixing] 新建配料记录:', newRecord);
-    setShowForm(false);
-    resetForm();
+    const result = addMixingWithStock(newRecord);
+    if (result.success) {
+      Taro.showToast({ title: '保存成功', icon: 'success' });
+      console.log('[Mixing] 新建配料记录:', newRecord);
+      setShowForm(false);
+      resetForm();
+    } else {
+      Taro.showToast({ title: result.message || '保存失败', icon: 'none', duration: 3000 });
+      console.log('[Mixing] 保存失败:', result.message);
+    }
   };
 
   const handleCloseForm = () => {
@@ -241,7 +308,7 @@ const MixingPage: React.FC = () => {
           <Text className={styles.actionBtnText}>➕ 新建配料</Text>
         </Button>
         <Button className={styles.actionBtn} onClick={handleViewHistory}>
-          <Text className={styles.actionBtnText}>📋 历史配方</Text>
+          <Text className={styles.actionBtnText}>� 历史配方</Text>
         </Button>
       </View>
 
@@ -494,6 +561,114 @@ const MixingPage: React.FC = () => {
             />
           )}
         </View>
+      </Modal>
+
+      <Modal
+        visible={showHistoryModal}
+        title="📜 历史配方库"
+        onClose={() => setShowHistoryModal(false)}
+        showFooter={false}
+      >
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>用途筛选</Text>
+          <View className={styles.tagGroup}>
+            {historyPurposeOptions.map(purpose => (
+              <View
+                key={purpose}
+                className={`${styles.tagItem} ${historyPurposeFilter === purpose ? styles.tagItemActive : ''}`}
+                onClick={() => setHistoryPurposeFilter(purpose)}
+              >
+                <Text>{purpose}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>匠人筛选</Text>
+          <View className={styles.tagGroup}>
+            {historyOperatorOptions.map(operator => (
+              <View
+                key={operator}
+                className={`${styles.tagItem} ${historyOperatorFilter === operator ? styles.tagItemActive : ''}`}
+                onClick={() => setHistoryOperatorFilter(operator)}
+              >
+                <Text>{operator}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>原料筛选（多选）</Text>
+          <View className={styles.tagGroup}>
+            {materials.map(material => (
+              <View
+                key={material.id}
+                className={`${styles.tagItem} ${historyMaterialFilters.includes(material.id) ? styles.tagItemActive : ''}`}
+                onClick={() => toggleHistoryMaterialFilter(material.id)}
+              >
+                <Text>{material.name}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <Text className={styles.sectionTitle}>
+          配方列表 {filteredHistoryMixings.length !== mixings.length ? `（筛选 ${filteredHistoryMixings.length}/${mixings.length}）` : `（共 ${mixings.length} 条）`}
+        </Text>
+
+        <ScrollView scrollY style={{ maxHeight: '800rpx' }}>
+          {filteredHistoryMixings.length > 0 ? (
+            filteredHistoryMixings.map(mixing => (
+              <View key={mixing.id} className={styles.mixingItem}>
+                <View className={styles.mixingHeader}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={{ fontSize: '30rpx', fontWeight: '600', color: '#333' }}>{mixing.name}</Text>
+                    <View style={{ display: 'flex', gap: '16rpx', marginTop: '8rpx', flexWrap: 'wrap' }}>
+                      <Text style={{ fontSize: '22rpx', color: '#8B4513', background: 'rgba(139, 69, 19, 0.1)', padding: '4rpx 12rpx', borderRadius: '8rpx' }}>
+                        {mixing.purpose}
+                      </Text>
+                      <Text style={{ fontSize: '22rpx', color: '#666' }}>🧑‍🍳 {mixing.operator}</Text>
+                      <Text style={{ fontSize: '22rpx', color: '#666' }}>📅 {mixing.date}</Text>
+                      <Text style={{ fontSize: '22rpx', color: '#8B4513', fontWeight: '600' }}>⚖️ {mixing.totalWeight}克</Text>
+                    </View>
+                  </View>
+                </View>
+
+                <View style={{ marginTop: '16rpx', padding: '12rpx', background: '#f8f5f0', borderRadius: '8rpx' }}>
+                  <Text style={{ fontSize: '24rpx', color: '#666', marginBottom: '8rpx' }}>原料组合：</Text>
+                  <View style={{ display: 'flex', flexWrap: 'wrap', gap: '12rpx' }}>
+                    {mixing.materials.map((mat, idx) => (
+                      <Text key={idx} style={{ fontSize: '24rpx', color: '#555', background: '#fff', padding: '6rpx 16rpx', borderRadius: '8rpx', border: '1rpx solid #e8e0d5' }}>
+                        {mat.materialName} {mat.ratio}%
+                      </Text>
+                    ))}
+                  </View>
+                </View>
+
+                <View style={{ marginTop: '16rpx', display: 'flex', justifyContent: 'flex-end' }}>
+                  <View
+                    style={{
+                      padding: '12rpx 32rpx',
+                      background: 'linear-gradient(135deg, #8B4513 0%, #A0522D 100%)',
+                      borderRadius: '32rpx',
+                    }}
+                    onClick={() => handleDuplicateMixing(mixing.id)}
+                  >
+                    <Text style={{ fontSize: '26rpx', color: '#fff', fontWeight: '500' }}>📋 复制使用</Text>
+                  </View>
+                </View>
+              </View>
+            ))
+          ) : (
+            <EmptyState
+              icon="📜"
+              title={mixings.length > 0 ? '暂无匹配的配方' : '暂无历史配方'}
+              description={mixings.length > 0 ? '请尝试调整筛选条件' : '先创建一些配料记录吧'}
+            />
+          )}
+        </ScrollView>
       </Modal>
     </View>
   );

@@ -3,7 +3,7 @@ export type MaterialGrade = 'S' | 'A' | 'B' | 'C';
 export type ProcessType = 'basin' | 'select' | 'assemble' | 'repair' | 'test';
 export type ProductGrade = 'premium' | 'fine' | 'standard' | 'normal';
 export type OrderType = 'artist' | 'babyhair' | 'normal';
-export type OrderStatus = 'pending' | 'processing' | 'completed' | 'cancelled';
+export type OrderStatus = 'pending' | 'processing' | 'completed' | 'paid' | 'cancelled';
 export type CustomerType = 'artist' | 'wholesale' | 'retail' | 'other';
 export type SaleType = 'wholesale' | 'retail' | 'maintenance';
 
@@ -26,12 +26,13 @@ export interface Material {
 export interface MixingRecord {
   id: string;
   name: string;
-  materials: { materialId: string; materialName: string; ratio: number }[];
+  materials: { materialId: string; materialName: string; ratio: number; usedWeight?: number }[];
   totalWeight: number;
   purpose: string;
   operator: string;
   date: string;
   remark?: string;
+  isHistorical?: boolean;
 }
 
 export interface ProcessRecord {
@@ -45,6 +46,7 @@ export interface ProcessRecord {
   quality: string;
   remark?: string;
   relatedMixingId?: string;
+  relatedProductId?: string;
 }
 
 export interface BrushSpec {
@@ -64,6 +66,7 @@ export interface Product {
   gradeName: string;
   materials: string[];
   processRecords: string[];
+  mixingId?: string;
   createDate: string;
   quantity: number;
   price: number;
@@ -95,6 +98,9 @@ export interface Order {
   status: OrderStatus;
   statusName: string;
   createDate: string;
+  processDate?: string;
+  completeDate?: string;
+  paidDate?: string;
   requireDate?: string;
   remark?: string;
   babyInfo?: {
@@ -125,6 +131,7 @@ export interface SaleRecord {
   date: string;
   operator: string;
   remark?: string;
+  relatedOrderId?: string;
 }
 
 export interface MaintenanceRecord {

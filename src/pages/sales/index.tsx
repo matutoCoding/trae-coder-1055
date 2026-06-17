@@ -11,13 +11,48 @@ import classnames from 'classnames';
 import styles from './index.module.scss';
 import { SaleType } from '../../types';
 
+const getLast6Months = (): string[] => {
+  const result: string[] = [];
+  const now = new Date();
+  for (let i = 0; i < 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    result.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  }
+  return result;
+};
+
+const rankEmojis = ['🥇', '🥈', '🥉', '4️⃣', '5️⃣'];
+
 const SalesPage: React.FC = () => {
-  const { sales, customers, products, addSale } = useApp();
+  const { sales, customers, products, orders, addSale, addSaleWithStock } = useApp();
   const [activeTab, setActiveTab] = useState<string>('all');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showSettleModal, setShowSettleModal] = useState(false);
+  const [showDashboardModal, setShowDashboardModal] = useState(false);
   const [showCustomerPicker, setShowCustomerPicker] = useState(false);
   const [showProductPicker, setShowProductPicker] = useState(false);
+
+  const [dashboardMonth, setDashboardMonth] = useState<string>(getLast6Months()[0]);
+
+  const todayStr = formatDate(new Date());
+  const firstDayOfMonth = () => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+  const firstDayOfLastMonth = () => {
+    const d = new Date();
+    d.setMonth(d.getMonth() - 1);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-01`;
+  };
+  const lastDayOfLastMonth = () => {
+    const d = new Date();
+    d.setDate(0);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  };
+
+  const [settleStartDate, setSettleStartDate] = useState<string>('');
+  const [settleEndDate, setSettleEndDate] = useState<string>('');
+  const [settleQuickTag, setSettleQuickTag] = useState<string>('all');
 
   const [formType, setFormType] = useState<SaleType | ''>('');
   const [formCustomerId, setFormCustomerId] = useState('');
@@ -56,6 +91,91 @@ const SalesPage: React.FC = () => {
     const avgOrder = transactionCount > 0 ? Math.round(totalAmount / transactionCount) : 0;
     return { totalAmount, wholesaleAmount, retailAmount, maintenanceAmount, transactionCount, avgOrder };
   }, [sales]);
+
+  const dashboardStats = useMemo(() => {
+    const monthSales = sales.filter(s => s.date.startsWith(dashboardMonth));
+    const monthOrders = orders.filter(o => (o.createDate || '').startsWith(dashboardMonth));
+
+    const revenue = monthSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const orderAmount = monthOrders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    const transactionCount = monthSales.length;
+    const uniqueCustomerIds = new Set(monthSales.filter(s => s.customerId).map(s => s.customerId));
+    const customerCount = uniqueCustomerIds.size;
+
+    const productQtyMap = new Map<string, { name: string; qty: number }>();
+    monthSales.forEach(s => {
+      if (s.productId) {
+        const existing = productQtyMap.get(s.productId);
+        if (existing) {
+          existing.qty += s.quantity;
+        } else {
+          productQtyMap.set(s.productId, { name: s.productName || '未知商品', qty: s.quantity });
+        }
+      }
+    });
+    const topProducts = Array.from(productQtyMap.entries())
+      .map(([, v]) => v)
+      .sort((a, b) => b.qty - a.qty)
+      .slice(0, 5);
+
+    const customerAmountMap = new Map<string, { name: string; amount: number }>();
+    monthSales.forEach(s => {
+      if (s.customerName) {
+        const existing = customerAmountMap.get(s.customerName);
+        if (existing) {
+          existing.amount += s.totalAmount;
+        } else {
+          customerAmountMap.set(s.customerName, { name: s.customerName, amount: s.totalAmount });
+        }
+      }
+    });
+    const topCustomers = Array.from(customerAmountMap.entries())
+      .map(([, v]) => v)
+      .sort((a, b) => b.amount - a.amount)
+      .slice(0, 5);
+
+    return { revenue, orderAmount, transactionCount, customerCount, topProducts, topCustomers };
+  }, [sales, orders, dashboardMonth]);
+
+  const settleStats = useMemo(() => {
+    let filteredSales = sales;
+    if (settleStartDate || settleEndDate) {
+      filteredSales = sales.filter(s => {
+        const saleDate = new Date(s.date);
+        if (settleStartDate && saleDate < new Date(settleStartDate)) return false;
+        if (settleEndDate) {
+          const end = new Date(settleEndDate);
+          end.setHours(23, 59, 59, 999);
+          if (saleDate > end) return false;
+        }
+        return true;
+      });
+    }
+    const totalAmount = filteredSales.reduce((sum, s) => sum + s.totalAmount, 0);
+    const wholesaleAmount = filteredSales.filter(s => s.type === 'wholesale').reduce((sum, s) => sum + s.totalAmount, 0);
+    const retailAmount = filteredSales.filter(s => s.type === 'retail').reduce((sum, s) => sum + s.totalAmount, 0);
+    const maintenanceAmount = filteredSales.filter(s => s.type === 'maintenance').reduce((sum, s) => sum + s.totalAmount, 0);
+    const transactionCount = filteredSales.length;
+    const avgOrder = transactionCount > 0 ? Math.round(totalAmount / transactionCount) : 0;
+    return { totalAmount, wholesaleAmount, retailAmount, maintenanceAmount, transactionCount, avgOrder };
+  }, [sales, settleStartDate, settleEndDate]);
+
+  const handleSettleQuickTag = (tag: string) => {
+    setSettleQuickTag(tag);
+    if (tag === 'today') {
+      setSettleStartDate(todayStr);
+      setSettleEndDate(todayStr);
+    } else if (tag === 'thisMonth') {
+      setSettleStartDate(firstDayOfMonth());
+      setSettleEndDate(todayStr);
+    } else if (tag === 'lastMonth') {
+      setSettleStartDate(firstDayOfLastMonth());
+      setSettleEndDate(lastDayOfLastMonth());
+    } else {
+      setSettleStartDate('');
+      setSettleEndDate('');
+    }
+  };
 
   const getTypeClass = (type: string) => {
     const classMap: Record<string, string> = {
@@ -141,14 +261,24 @@ const SalesPage: React.FC = () => {
       remark: formRemark || undefined,
     };
 
-    addSale(newSale);
+    const result = addSaleWithStock(newSale);
+    if (!result.success) {
+      Taro.showToast({ title: result.message || '添加失败', icon: 'none' });
+      return;
+    }
     setShowAddModal(false);
     Taro.showToast({ title: '添加成功', icon: 'success' });
     console.log('[Sales] 新增销售记录:', newSale);
   };
 
   const handleSettle = () => {
+    handleSettleQuickTag('all');
     setShowSettleModal(true);
+  };
+
+  const handleDashboard = () => {
+    setDashboardMonth(getLast6Months()[0]);
+    setShowDashboardModal(true);
   };
 
   const handleBack = () => {
@@ -204,6 +334,9 @@ const SalesPage: React.FC = () => {
         </Button>
         <Button className={styles.actionBtn} onClick={handleSettle}>
           <Text className={styles.actionBtnText}>💰 收支结算</Text>
+        </Button>
+        <Button className={styles.actionBtn} onClick={handleDashboard}>
+          <Text className={styles.actionBtnText}>📊 经营看板</Text>
         </Button>
       </View>
 
@@ -448,20 +581,66 @@ const SalesPage: React.FC = () => {
         confirmText="确定"
         cancelText="关闭"
       >
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>快捷选择</Text>
+          <View className={styles.tagGroup}>
+            {[
+              { key: 'today', label: '今日' },
+              { key: 'thisMonth', label: '本月' },
+              { key: 'lastMonth', label: '上月' },
+              { key: 'all', label: '全部' },
+            ].map(tag => (
+              <View
+                key={tag.key}
+                className={classnames(styles.tagItem, settleQuickTag === tag.key && styles.tagItemActive)}
+                onClick={() => handleSettleQuickTag(tag.key)}
+              >
+                <Text>{tag.label}</Text>
+              </View>
+            ))}
+          </View>
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>开始日期</Text>
+          <Input
+            className={styles.input}
+            type="date"
+            value={settleStartDate}
+            onInput={(e) => {
+              setSettleStartDate(e.detail.value);
+              setSettleQuickTag('');
+            }}
+          />
+        </View>
+
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>结束日期</Text>
+          <Input
+            className={styles.input}
+            type="date"
+            value={settleEndDate}
+            onInput={(e) => {
+              setSettleEndDate(e.detail.value);
+              setSettleQuickTag('');
+            }}
+          />
+        </View>
+
         <View className={styles.settleCard}>
           <Text className={styles.settleTitle}>总收入</Text>
-          <Text className={styles.settleAmount}>{formatPrice(stats.totalAmount)}</Text>
+          <Text className={styles.settleAmount}>{formatPrice(settleStats.totalAmount)}</Text>
           <View className={styles.settleRow}>
             <Text className={styles.settleLabel}>批发收入</Text>
-            <Text className={styles.settleValue}>{formatPrice(stats.wholesaleAmount)}</Text>
+            <Text className={styles.settleValue}>{formatPrice(settleStats.wholesaleAmount)}</Text>
           </View>
           <View className={styles.settleRow}>
             <Text className={styles.settleLabel}>零售收入</Text>
-            <Text className={styles.settleValue}>{formatPrice(stats.retailAmount)}</Text>
+            <Text className={styles.settleValue}>{formatPrice(settleStats.retailAmount)}</Text>
           </View>
           <View className={styles.settleRow}>
             <Text className={styles.settleLabel}>养护收入</Text>
-            <Text className={styles.settleValue}>{formatPrice(stats.maintenanceAmount)}</Text>
+            <Text className={styles.settleValue}>{formatPrice(settleStats.maintenanceAmount)}</Text>
           </View>
         </View>
 
@@ -469,13 +648,13 @@ const SalesPage: React.FC = () => {
         <View className={styles.settleRow}>
           <Text className={styles.label}>总交易笔数</Text>
           <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#333' }}>
-            {stats.transactionCount} 笔
+            {settleStats.transactionCount} 笔
           </Text>
         </View>
         <View className={styles.settleRow}>
           <Text className={styles.label}>平均客单价</Text>
           <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#8B4513' }}>
-            {formatPrice(stats.avgOrder)}
+            {formatPrice(settleStats.avgOrder)}
           </Text>
         </View>
 
@@ -484,6 +663,67 @@ const SalesPage: React.FC = () => {
           <Text className={styles.label}>结算日期</Text>
           <Text style={{ fontSize: '28rpx', color: '#666' }}>{formatDate(new Date())}</Text>
         </View>
+      </Modal>
+
+      <Modal
+        visible={showDashboardModal}
+        title="📊 经营看板"
+        onClose={() => setShowDashboardModal(false)}
+        showFooter={false}
+      >
+        <View className={styles.formGroup}>
+          <Text className={styles.label}>选择月份</Text>
+          <ScrollView scrollX className={styles.tagGroup}>
+            {getLast6Months().map(month => (
+              <View
+                key={month}
+                className={classnames(styles.tagItem, dashboardMonth === month && styles.tagItemActive)}
+                onClick={() => setDashboardMonth(month)}
+              >
+                <Text>{month}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </View>
+
+        <View className={styles.statsRow} style={{ flexWrap: 'wrap' }}>
+          <StatCard title="本月营收" value={formatPrice(dashboardStats.revenue)} unit="元" color="primary" />
+          <StatCard title="订单金额" value={formatPrice(dashboardStats.orderAmount)} unit="元" color="success" />
+          <StatCard title="成交笔数" value={dashboardStats.transactionCount} unit="笔" color="warning" />
+          <StatCard title="客户数" value={dashboardStats.customerCount} unit="人" color="info" />
+        </View>
+
+        <View className={styles.sectionTitle}>热销成品 TOP5</View>
+        {dashboardStats.topProducts.length > 0 ? (
+          dashboardStats.topProducts.map((item, idx) => (
+            <View key={idx} className={styles.settleRow}>
+              <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#333' }}>
+                {rankEmojis[idx]} {item.name}
+              </Text>
+              <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#8B4513' }}>
+                {item.qty} 件
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={{ fontSize: '26rpx', color: '#999', padding: '16rpx 0' }}>本月暂无销售数据</Text>
+        )}
+
+        <View className={styles.sectionTitle}>客户贡献 TOP5</View>
+        {dashboardStats.topCustomers.length > 0 ? (
+          dashboardStats.topCustomers.map((item, idx) => (
+            <View key={idx} className={styles.settleRow}>
+              <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#333' }}>
+                {rankEmojis[idx]} {item.name}
+              </Text>
+              <Text style={{ fontSize: '28rpx', fontWeight: '600', color: '#8B4513' }}>
+                {formatPrice(item.amount)}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <Text style={{ fontSize: '26rpx', color: '#999', padding: '16rpx 0' }}>本月暂无客户数据</Text>
+        )}
       </Modal>
     </View>
   );

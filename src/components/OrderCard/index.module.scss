@@ -130,6 +130,146 @@
   @include text-ellipsis;
 }
 
+.progressBar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: $spacing-md 0;
+  margin-bottom: $spacing-sm;
+}
+
+.stepItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  flex: 1;
+}
+
+.stepDot {
+  width: 40rpx;
+  height: 40rpx;
+  border-radius: 50%;
+  background: #D1D5DB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1;
+}
+
+.stepDotDone {
+  background: #2E8B57;
+}
+
+.stepDotActive {
+  background: #CD853F;
+  box-shadow: 0 0 0 6rpx rgba(205, 133, 63, 0.2);
+}
+
+.stepCheck {
+  color: #fff;
+  font-size: 22rpx;
+  font-weight: bold;
+}
+
+.stepDotInner {
+  width: 16rpx;
+  height: 16rpx;
+  border-radius: 50%;
+  background: #fff;
+  display: block;
+}
+
+.stepLabel {
+  font-size: 20rpx;
+  color: #9CA3AF;
+  margin-top: 8rpx;
+  white-space: nowrap;
+}
+
+.stepLabelDone {
+  color: #2E8B57;
+  font-weight: $font-weight-medium;
+}
+
+.stepLabelActive {
+  color: #CD853F;
+  font-weight: $font-weight-semibold;
+}
+
+.stepLine {
+  position: absolute;
+  top: 20rpx;
+  left: calc(50% + 24rpx);
+  width: calc(100% - 48rpx);
+  height: 4rpx;
+  background: #E5E7EB;
+}
+
+.stepLineDone {
+  background: #2E8B57;
+}
+
+.customProgress {
+  display: flex;
+  align-items: center;
+  padding: $spacing-sm $spacing-md;
+  background: linear-gradient(135deg, rgba(205, 133, 63, 0.1) 0%, rgba(222, 184, 135, 0.1) 100%);
+  border-radius: $radius-sm;
+  margin-bottom: $spacing-sm;
+  border-left: 4rpx solid $color-primary;
+}
+
+.customProgressIcon {
+  font-size: 28rpx;
+  margin-right: $spacing-sm;
+}
+
+.customProgressText {
+  font-size: $font-size-sm;
+  color: $color-primary;
+  font-weight: $font-weight-medium;
+}
+
+.actionsRow {
+  display: flex;
+  justify-content: flex-end;
+  gap: $spacing-sm;
+  margin-bottom: $spacing-sm;
+  padding-top: $spacing-sm;
+}
+
+.actionBtn {
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-round;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  transition: all $transition-fast;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:active {
+    transform: scale(0.96);
+    opacity: 0.9;
+  }
+}
+
+.actionBtnPrimary {
+  background: linear-gradient(135deg, $color-primary 0%, $color-primary-light 100%);
+  color: #fff;
+}
+
+.actionBtnSuccess {
+  background: linear-gradient(135deg, #2E8B57 0%, #3CB371 100%);
+  color: #fff;
+}
+
+.actionBtnInfo {
+  background: linear-gradient(135deg, #4682B4 0%, #5F9EA0 100%);
+  color: #fff;
+}
+
 .footer {
   display: flex;
   justify-content: space-between;
